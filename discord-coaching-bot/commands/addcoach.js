@@ -1,37 +1,43 @@
-const { SlashCommandBuilder } = require('discord.js');
-const { PermissionsBitField, EmbedBuilder } = require('discord.js');
-const { openDb } = require('../database/database');
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const logger = require('../utils/logger');
+const { PermissionsBitField } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('addcoach')
         .setDescription('Adds a new coach.')
-        .addUserOption(option =>
-            option.setName('user')
-                .setDescription('The user to add as a coach.')
-                .setRequired(true))
-        .addStringOption(option =>
-            option.setName('description')
-                .setDescription('An optional bio for the coach.')
-                .setRequired(false)),
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
     async execute(interaction) {
-        if (!interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
-            const noPermsEmbed = new EmbedBuilder()
-                .setColor('#FF0000')
-                .setTitle('Permission Denied')
-                .setDescription('You do not have permission to use this command.');
-            return interaction.reply({ embeds: [noPermsEmbed], ephemeral: true });
+        try {
+            const modal = new ModalBuilder()
+                .setCustomId('addCoachModal')
+                .setTitle('Add New Coach');
+
+            const userIdInput = new TextInputBuilder()
+                .setCustomId('userIdInput')
+                .setLabel("Coach's User ID")
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            const descriptionInput = new TextInputBuilder()
+                .setCustomId('descriptionInput')
+                .setLabel("Coach's Bio")
+                .setStyle(TextInputStyle.Paragraph)
+                .setRequired(false);
+
+            const firstActionRow = new ActionRowBuilder().addComponents(userIdInput);
+            const secondActionRow = new ActionRowBuilder().addComponents(descriptionInput);
+
+            modal.addComponents(firstActionRow, secondActionRow);
+
+            await interaction.showModal(modal);
+        } catch (error) {
+            logger.error(error, `Error executing ${interaction.commandName}`);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+            }
         }
-
-        const user = interaction.options.getUser('user');
-        const description = interaction.options.getString('description');
-        const db = await openDb();
-        await db.run('INSERT INTO coaches (name, description, discord_id) VALUES (?, ?, ?)', user.username, description, user.id);
-
-        const successEmbed = new EmbedBuilder()
-            .setColor('#00FF00')
-            .setTitle('Coach Added')
-            .setDescription(`Successfully added **${user.username}** as a coach.`);
-        await interaction.reply({ embeds: [successEmbed] });
     },
 };

@@ -1,11 +1,12 @@
 const { openDb } = require('../database/database');
 const moment = require('moment-timezone');
+const logger = require('../utils/logger');
 
 module.exports = {
     name: 'ready',
     once: true,
     async execute(client) {
-        console.log(`Ready! Logged in as ${client.user.tag}`);
+        logger.info(`Ready! Logged in as ${client.user.tag}`);
         const db = await openDb();
 
         setInterval(async () => {
@@ -24,17 +25,17 @@ module.exports = {
                     try {
                         await user.send(reminderMessage);
                     } catch (error) {
-                        console.error(`Could not send reminder DM to user ${user.id}`, error);
+                        logger.warn(`Could not send reminder DM to user ${user.id}`, error);
                     }
                     try {
                         await coach.send(reminderMessage);
                     } catch (error) {
-                        console.error(`Could not send reminder DM to coach ${coach.id}`, error);
+                        logger.warn(`Could not send reminder DM to coach ${coach.id}`, error);
                     }
 
                     await db.run('UPDATE sessions SET reminderSent = 1 WHERE id = ?', session.id);
                 } catch (error) {
-                    console.error(`Failed to send reminder for session ${session.id}:`, error);
+                    logger.error(error, `Failed to send reminder for session ${session.id}`);
                 }
             }
         }, 15 * 60 * 1000); // 15 minutes

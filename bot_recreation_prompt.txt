@@ -1,0 +1,75 @@
+### Project: Discord Coaching Session Bot
+
+**Objective:**
+
+Create a Discord bot using Node.js and the `discord.js` v14 library to manage a 1-on-1 coaching system. The bot will allow administrators to add coaches and create session slots. Users will then be able to view and claim these sessions. The bot must feature a modern user interface using Discord's UI components (Modals, Select Menus, Embeds, Buttons) and include a robust error logging system.
+
+**Core Features:**
+
+1.  **Coach Management (Admin Only):**
+    *   `/addcoach`: An admin command to add a new coach. This command should open a Modal asking for the coach's Discord User ID and an optional bio/description.
+    *   `/removecoach`: An admin command to remove a coach. This should present a dynamic String Select Menu listing all current coaches to choose from. A coach cannot be removed if they are assigned to any future sessions (claimed or unclaimed).
+    *   `/listcoaches`: An admin command that displays an embed listing all registered coaches with their bios.
+
+2.  **Session Management (Admin Only):**
+    *   `/createsession`: An admin command to create a new coaching session slot. This command should open a Modal asking for the date (`YYYY-MM-DD`) and time (`HH:MM` in UTC). After submitting the time, the bot should present a multi-select String Select Menu to assign one or more available coaches to this session slot.
+    *   `/viewsessions`: An admin command to view all *claimed* sessions. It should display an embed listing each session, the time, the coach, and the user who claimed it (using a user mention, e.g., `<@USER_ID>`).
+
+3.  **User-Facing Session Commands (Public):**
+    *   `/sessions`: A public command that displays available (unclaimed) coaching sessions. The list should be presented in a paginated embed, showing 5 sessions per page, with "Next" and "Previous" buttons for navigation.
+    *   `/mysessions`: A public command that allows a user to see their own upcoming claimed sessions. This view should also include a String Select Menu that allows them to cancel any session that is more than 48 hours away.
+
+4.  **Session Claiming & Cancelling Workflow:**
+    *   From the `/sessions` list, users can select a session to claim using a String Select Menu.
+    *   If a session has multiple coaches available, the user will be prompted with a second Select Menu to choose their preferred coach for the session.
+    *   Upon a successful claim, the user and the selected coach should receive a confirmation DM.
+    *   When a user cancels a session via `/mysessions`, they and the assigned coach should receive a cancellation DM.
+
+5.  **Guild Scheduled Event Integration:**
+    *   When an admin creates a new session, a corresponding **Guild Scheduled Event** must be created on the server's calendar.
+    *   When a session is claimed by a user or cancelled, the corresponding Guild Scheduled Event must be deleted.
+
+**Technical & Architectural Requirements:**
+
+1.  **Project Structure:**
+    *   `commands/`: Directory for all slash command files.
+    *   `events/`: Directory for event handlers (e.g., `interactionCreate.js`).
+    *   `database/`: Directory for database logic.
+    *   `database/migrations/`: Directory for numbered database migration scripts.
+    *   `utils/`: Directory for utility files, like the logger.
+    *   `index.js`: Main application entry point.
+    *   `migrate.js`: Script to run database migrations.
+    *   `deploy-commands.js`: Script to register slash commands to a specific guild.
+
+2.  **Database:**
+    *   Use **SQLite** with the `sqlite` and `sqlite3` npm packages.
+    *   The database schema must be managed by a migration script (`migrate.js`) that runs versioned migration files from the `database/migrations/` directory. Do not place schema-altering code in the main application logic.
+    *   **`coaches` table schema:**
+        *   `id` (INTEGER, PRIMARY KEY)
+        *   `name` (TEXT)
+        *   `description` (TEXT)
+        *   `discord_id` (TEXT)
+    *   **`sessions` table schema:**
+        *   `id` (INTEGER, PRIMARY KEY)
+        *   `datetime` (TEXT, ISO 8601 format)
+        *   `availableCoaches` (TEXT, stores a JSON array of coach IDs)
+        *   `isClaimed` (BOOLEAN, default 0)
+        *   `claimedBy` (TEXT, stores the user's Discord ID)
+        *   `claimedCoach` (INTEGER, foreign key to `coaches.id`)
+        *   `guildScheduledEventId` (TEXT, stores the ID of the Discord event)
+
+3.  **Error Logging:**
+    *   Implement a comprehensive logging system using `pino` and `pino-pretty`.
+    *   Create a reusable logger module in `utils/logger.js`.
+    *   **Crucially, every command's `execute` function and all other asynchronous operations (like modal submissions, button clicks, etc.) must be wrapped in a `try...catch` block.**
+    *   Inside the `catch` block, the error must be logged with context (e.g., the command name or interaction ID).
+    *   After logging, the bot must send a user-friendly, ephemeral error message (e.g., "There was an error processing your request.").
+
+4.  **Environment & Deployment:**
+    *   The bot must be configured using a `.env` file.
+    *   Required variables: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`.
+    *   The startup scripts (`index.js`, `deploy-commands.js`, etc.) must validate that all required environment variables are present and exit gracefully if they are not.
+    *   Slash commands should be registered on a **guild-specific** basis for fast updates during development, using the `deploy-commands.js` script.
+
+5.  **Permissions:**
+    *   All administrative commands must be restricted using `setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)`. Do not use role name/ID checks.

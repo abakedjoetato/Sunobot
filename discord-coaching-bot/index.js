@@ -1,4 +1,16 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+
+const logger = require('./utils/logger');
+
+const requiredEnvVars = ['DISCORD_TOKEN', 'CLIENT_ID', 'GUILD_ID'];
+
+for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+        logger.error(`Error: Missing required environment variable: ${envVar}`);
+        process.exit(1);
+    }
+}
+
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +24,6 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -34,6 +45,5 @@ for (const file of eventFiles) {
         client.on(event.name, (...args) => event.execute(...args));
     }
 }
-
 
 client.login(process.env.DISCORD_TOKEN);
