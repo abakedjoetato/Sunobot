@@ -1,20 +1,13 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const { openDb } = require('../database/database');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('listcoaches')
-        .setDescription('Lists all coaches.'),
+        .setDescription('Lists all coaches.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator),
     async execute(interaction) {
-        if (!interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
-            const noPermsEmbed = new EmbedBuilder()
-                .setColor('#FF0000')
-                .setTitle('Permission Denied')
-                .setDescription('You do not have permission to use this command.');
-            return interaction.reply({ embeds: [noPermsEmbed], ephemeral: true });
-        }
-
         const db = await openDb();
         const rows = await db.all('SELECT * FROM coaches');
 
