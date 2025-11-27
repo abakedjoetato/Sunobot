@@ -11,7 +11,7 @@ module.exports = {
                 .setDescription('The ID of the coach to remove.')
                 .setRequired(true)),
     async execute(interaction) {
-        if (!interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
+        if (process.env.ADMIN_ROLE_ID && !interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
             const noPermsEmbed = new EmbedBuilder()
                 .setColor('#FF0000')
                 .setTitle('Permission Denied')
