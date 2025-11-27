@@ -25,13 +25,29 @@ module.exports = {
             try {
                 if (interaction.customId.startsWith('create_session_')) {
                     const timestamp = interaction.customId.split('_')[2];
-                    const sessionDateTime = moment.unix(timestamp).utc().format('YYYY-MM-DD HH:mm:ss');
+                    const sessionDateTime = moment.unix(timestamp).utc();
                     const selectedCoaches = JSON.stringify(interaction.values);
-                    await db.run('INSERT INTO sessions (datetime, availableCoaches) VALUES (?, ?)', sessionDateTime, selectedCoaches);
+
+                    const coaches = await db.all(`SELECT name FROM coaches WHERE id IN (${interaction.values.map(() => '?').join(',')})`, interaction.values);
+                    const coachNames = coaches.map(c => c.name).join(', ');
+
+                    const guildScheduledEvent = await interaction.guild.scheduledEvents.create({
+                        name: 'Coaching Session',
+                        scheduledStartTime: sessionDateTime.toDate(),
+                        privacyLevel: 2, // GUILD_ONLY
+                        entityType: 3, // EXTERNAL
+                        description: `Coaching session with ${coachNames}`,
+                        entityMetadata: {
+                            location: 'Discord'
+                        }
+                    });
+
+                    await db.run('INSERT INTO sessions (datetime, availableCoaches, guildScheduledEventId) VALUES (?, ?, ?)', sessionDateTime.format('YYYY-MM-DD HH:mm:ss'), selectedCoaches, guildScheduledEvent.id);
+
                     const successEmbed = new EmbedBuilder()
                         .setColor('#00FF00')
                         .setTitle('Session Created')
-                        .setDescription(`Successfully created a session for **${moment(sessionDateTime).format('YYYY-MM-DD HH:mm')} UTC**.`);
+                        .setDescription(`Successfully created a session for **${sessionDateTime.format('YYYY-MM-DD HH:mm')} UTC**.`);
                     await interaction.update({ content: '', embeds: [successEmbed], components: [] });
                 } else if (interaction.customId === 'claim_session_select') {
                     const sessionId = interaction.values[0];
@@ -39,6 +55,15 @@ module.exports = {
                     if (!session || session.isClaimed) {
                         return await interaction.update({ content: 'This session is no longer available.', components: [], ephemeral: true });
                     }
+
+                    if (session.guildScheduledEventId) {
+                        try {
+                            await interaction.guild.scheduledEvents.delete(session.guildScheduledEventId);
+                        } catch (error) {
+                            logger.error(error, `Failed to delete guild scheduled event: ${session.guildScheduledEventId}`);
+                        }
+                    }
+
                     const availableCoachesIds = JSON.parse(session.availableCoaches);
                     if (availableCoachesIds.length === 1) {
                         const coachId = availableCoachesIds[0];
@@ -93,6 +118,15 @@ module.exports = {
                             .setDescription('You cannot cancel a session that is less than 48 hours away.');
                         return await interaction.update({ embeds: [errorEmbed], components: [] });
                     }
+
+                    if (session.guildScheduledEventId) {
+                        try {
+                            await interaction.guild.scheduledEvents.delete(session.guildScheduledEventId);
+                        } catch (error) {
+                            logger.error(error, `Failed to delete guild scheduled event: ${session.guildScheduledEventId}`);
+                        }
+                    }
+
                     const coachId = session.claimedCoach;
                     await db.run('UPDATE sessions SET isClaimed = 0, claimedBy = NULL, claimedCoach = NULL WHERE id = ?', sessionId);
                     const successEmbed = new EmbedBuilder()
