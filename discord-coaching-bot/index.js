@@ -40,9 +40,6 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
 	try {
-        console.log('The following commands will be registered:');
-        console.log(JSON.stringify(commands, null, 2));
-
 		console.log('Started refreshing application (/) commands.');
 
 		await rest.put(
