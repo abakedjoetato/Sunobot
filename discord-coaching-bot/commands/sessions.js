@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { openDb } = require('../database/database');
 const moment = require('moment-timezone');
+const logger = require('../utils/logger');
 
 const SESSIONS_PER_PAGE = 5;
 
@@ -71,7 +72,7 @@ module.exports = {
             const pageContent = await buildSessionsPage(1);
             await interaction.reply(pageContent);
         } catch (error) {
-            console.error(error);
+            logger.error(error, 'Failed to fetch sessions');
             if (!interaction.replied) {
                 await interaction.reply({ content: 'There was an error while fetching sessions.', ephemeral: true });
             }
