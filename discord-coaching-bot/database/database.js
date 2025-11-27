@@ -11,6 +11,23 @@ async function openDb() {
 
     // Apply schema changes directly for now.
     try {
+        await db.exec(`CREATE TABLE IF NOT EXISTS coaches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT
+        )`);
+
+        await db.exec(`CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            datetime TEXT NOT NULL,
+            availableCoaches TEXT NOT NULL,
+            isClaimed BOOLEAN NOT NULL DEFAULT 0,
+            claimedBy TEXT,
+            claimedCoach INTEGER,
+            reminderSent BOOLEAN NOT NULL DEFAULT 0,
+            FOREIGN KEY (claimedCoach) REFERENCES coaches(id)
+        )`);
+
         const sessionsInfo = await db.all("PRAGMA table_info('sessions')");
         if (!sessionsInfo.some(column => column.name === 'guildScheduledEventId')) {
             await db.exec('ALTER TABLE sessions ADD COLUMN guildScheduledEventId TEXT');

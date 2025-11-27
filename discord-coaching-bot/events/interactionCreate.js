@@ -209,9 +209,10 @@ module.exports = {
                     await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
                 }
             } else if (interaction.customId === 'createSessionModal') {
-                const date = interaction.fields.getTextInputValue('dateInput');
-                const time = interaction.fields.getTextInputValue('timeInput');
-                const dateTimeString = `${date} ${time}`;
+                try {
+                    const date = interaction.fields.getTextInputValue('dateInput');
+                    const time = interaction.fields.getTextInputValue('timeInput');
+                    const dateTimeString = `${date} ${time}`;
                 const sessionDateTime = moment.tz(dateTimeString, 'YYYY-MM-DD HH:mm', 'UTC');
 
                 if (!sessionDateTime.isValid()) {
