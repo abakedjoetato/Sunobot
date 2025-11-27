@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { openDb } = require('./database/database');
+const logger = require('./utils/logger');
 
 const migrationsDir = path.join(__dirname, 'database', 'migrations');
 
@@ -19,4 +20,4 @@ async function runMigrations() {
     }
 }
 
-runMigrations().catch(console.error);
+runMigrations().catch(error => logger.error(error, 'Migration failed'));

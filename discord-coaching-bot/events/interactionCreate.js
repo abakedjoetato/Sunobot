@@ -254,6 +254,30 @@ module.exports = {
                     logger.error(error, 'Failed to process create session modal.');
                     await interaction.reply({ content: 'There was an error processing your request.', ephemeral: true });
                 }
+
+                const db = await openDb();
+                const coaches = await db.all('SELECT id, name FROM coaches');
+
+                if (coaches.length === 0) {
+                    return interaction.reply({ content: 'There are no coaches available. Please add a coach first.', ephemeral: true });
+                }
+
+                const options = coaches.map(coach => ({
+                    label: coach.name,
+                    value: coach.id.toString(),
+                }));
+
+                const row = new ActionRowBuilder()
+                    .addComponents(
+                        new StringSelectMenuBuilder()
+                            .setCustomId(`create_session_${sessionDateTime.unix()}`)
+                            .setPlaceholder('Select coaches')
+                            .setMinValues(1)
+                            .setMaxValues(options.length)
+                            .addOptions(options),
+                    );
+
+                await interaction.reply({ content: 'Please select the coaches for this session:', components: [row], ephemeral: true });
             }
         }
     },
