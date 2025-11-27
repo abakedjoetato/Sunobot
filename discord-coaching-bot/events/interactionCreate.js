@@ -1,4 +1,4 @@
-const { Collection } = require('discord.js');
+const { Collection, StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -213,18 +213,46 @@ module.exports = {
                     const date = interaction.fields.getTextInputValue('dateInput');
                     const time = interaction.fields.getTextInputValue('timeInput');
                     const dateTimeString = `${date} ${time}`;
-                const sessionDateTime = moment.tz(dateTimeString, 'YYYY-MM-DD HH:mm', 'UTC');
+                    const sessionDateTime = moment.tz(dateTimeString, 'YYYY-MM-DD HH:mm', 'UTC');
 
-                if (!sessionDateTime.isValid()) {
-                    return interaction.reply({ content: 'Invalid date or time format. Please use YYYY-MM-DD and HH:MM.', ephemeral: true });
-                }
+                    if (!sessionDateTime.isValid()) {
+                        return interaction.reply({ content: 'Invalid date or time format. Please use YYYY-MM-DD and HH:MM.', ephemeral: true });
+                    }
 
-                if (sessionDateTime.isBefore(moment())) {
-                    return interaction.reply({ content: 'You cannot create a session in the past.', ephemeral: true });
-                }
+                    if (sessionDateTime.isBefore(moment())) {
+                        return interaction.reply({ content: 'You cannot create a session in the past.', ephemeral: true });
+                    }
 
-                if (sessionDateTime.isAfter(moment().add(90, 'days'))) {
-                    return interaction.reply({ content: 'You can only create sessions up to 90 days in advance.', ephemeral: true });
+                    if (sessionDateTime.isAfter(moment().add(90, 'days'))) {
+                        return interaction.reply({ content: 'You can only create sessions up to 90 days in advance.', ephemeral: true });
+                    }
+
+                    const db = await openDb();
+                    const coaches = await db.all('SELECT id, name FROM coaches');
+
+                    if (coaches.length === 0) {
+                        return interaction.reply({ content: 'There are no coaches available. Please add a coach first.', ephemeral: true });
+                    }
+
+                    const options = coaches.map(coach => ({
+                        label: coach.name,
+                        value: coach.id.toString(),
+                    }));
+
+                    const row = new ActionRowBuilder()
+                        .addComponents(
+                            new StringSelectMenuBuilder()
+                                .setCustomId(`create_session_${sessionDateTime.unix()}`)
+                                .setPlaceholder('Select coaches')
+                                .setMinValues(1)
+                                .setMaxValues(options.length)
+                                .addOptions(options),
+                        );
+
+                    await interaction.reply({ content: 'Please select the coaches for this session:', components: [row], ephemeral: true });
+                } catch (error) {
+                    logger.error(error, 'Failed to process create session modal.');
+                    await interaction.reply({ content: 'There was an error processing your request.', ephemeral: true });
                 }
 
                 const db = await openDb();
